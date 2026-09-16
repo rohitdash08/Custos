@@ -1,0 +1,13 @@
+{
+  "name": "@custos/demo-agents",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev:good": "tsx src/good-seller.ts",
+    "dev:flaky": "tsx src/flaky-seller.ts",
+    "build": "tsc",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}

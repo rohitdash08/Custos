@@ -1,0 +1,12 @@
+{
+  "name": "@custos/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "test:gas": "forge test --gas-report",
+    "coverage": "forge coverage",
+    "deploy:base-sepolia": "forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast --verify"
+  }
+}

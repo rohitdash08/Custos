@@ -1,0 +1,16 @@
+{
+  "name": "custos",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Trust and accountability middleware for x402 agent commerce on Base",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "dev": "pnpm --parallel --filter @custos/facilitator --filter @custos/dashboard dev"
+  }
+}

@@ -1,0 +1,6 @@
+packages:
+  - "eas"
+  - "facilitator"
+  - "sdk"
+  - "demo-agents"
+  - "dashboard"
