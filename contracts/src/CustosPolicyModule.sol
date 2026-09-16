@@ -153,14 +153,15 @@ contract CustosPolicyModule {
         address account,
         address payee,
         uint256 amount,
-        ScoreAttestation calldata attestation
+        ScoreAttestation memory attestation
     ) public returns (bool approved) {
         if (msg.sender != account && msg.sender != entryPoint) {
             emit PaymentRejected(account, payee, amount, RejectionReason.UnauthorizedCaller);
             return false;
         }
 
-        (approved, RejectionReason reason,) = _checkPayment(account, payee, amount, attestation);
+        RejectionReason reason;
+        (approved, reason,) = _checkPayment(account, payee, amount, attestation);
         if (!approved) {
             emit PaymentRejected(account, payee, amount, reason);
             return false;
@@ -191,7 +192,7 @@ contract CustosPolicyModule {
         address account,
         address payee,
         uint256 amount,
-        ScoreAttestation calldata attestation
+        ScoreAttestation memory attestation
     ) internal view returns (bool approved, RejectionReason reason, uint256 dailyRemaining) {
         Policy storage policy = policies[account];
         if (!policy.initialized) return (false, RejectionReason.PolicyNotInitialized, 0);
@@ -214,7 +215,7 @@ contract CustosPolicyModule {
         return (true, RejectionReason.None, dailyRemaining);
     }
 
-    function _validScoreAttestation(address account, ScoreAttestation calldata attestation) internal view returns (bool) {
+    function _validScoreAttestation(address account, ScoreAttestation memory attestation) internal view returns (bool) {
         if (attestation.signature.length != 65 || attestation.deadline < block.timestamp) return false;
         if (usedScoreAttestations[account][attestation.nonce]) return false;
         bytes32 structHash = keccak256(

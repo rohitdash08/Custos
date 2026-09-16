@@ -53,9 +53,16 @@ contract CustosEscrowTest is Test {
     }
 
     function testDepositAndConfirmDelivery() external {
+        vm.expectEmit(true, true, true, true);
+        emit CustosEscrow.EscrowDeposited(REQUEST_ID, buyer, seller, AMOUNT, block.timestamp + TIMEOUT);
         vm.prank(buyer);
         escrow.deposit(buyer, seller, REQUEST_ID, AMOUNT);
 
+        assertEq(token.balanceOf(address(escrow)), AMOUNT);
+        assertEq(token.balanceOf(buyer), AMOUNT * 4);
+
+        vm.expectEmit(true, true, true, true);
+        emit CustosEscrow.DeliveryConfirmed(REQUEST_ID, buyer, seller, AMOUNT);
         vm.prank(buyer);
         escrow.confirmDelivery(REQUEST_ID);
 
@@ -77,11 +84,28 @@ contract CustosEscrowTest is Test {
         _deposit();
         vm.warp(block.timestamp + TIMEOUT);
 
+        vm.expectEmit(true, true, false, true);
+        emit CustosEscrow.EscrowRefunded(REQUEST_ID, buyer, AMOUNT);
         escrow.refund(REQUEST_ID);
 
         (, , , , CustosEscrow.Status status) = escrow.escrows(REQUEST_ID);
         assertEq(uint256(status), uint256(CustosEscrow.Status.Refunded));
         assertEq(token.balanceOf(buyer), AMOUNT * 5);
+        assertEq(token.balanceOf(address(escrow)), 0);
+    }
+
+    function testFacilitatorCanDepositOnBehalfOfBuyer() external {
+        address facilitator = address(0xFAC1);
+
+        vm.prank(facilitator);
+        escrow.deposit(buyer, seller, REQUEST_ID, AMOUNT);
+
+        (address recordedBuyer, address recordedSeller, uint256 amount,, CustosEscrow.Status status) =
+            escrow.escrows(REQUEST_ID);
+        assertEq(recordedBuyer, buyer);
+        assertEq(recordedSeller, seller);
+        assertEq(amount, AMOUNT);
+        assertEq(uint256(status), uint256(CustosEscrow.Status.Funded));
     }
 
     function testRefundBeforeTimeoutReverts() external {
@@ -94,9 +118,13 @@ contract CustosEscrowTest is Test {
     function testDisputeCanBeResolvedForSeller() external {
         _deposit();
 
+        vm.expectEmit(true, true, false, true);
+        emit CustosEscrow.DisputeOpened(REQUEST_ID, seller);
         vm.prank(seller);
         escrow.dispute(REQUEST_ID);
 
+        vm.expectEmit(true, true, false, true);
+        emit CustosEscrow.DisputeResolved(REQUEST_ID, true, arbiter, AMOUNT);
         vm.prank(arbiter);
         escrow.resolveDispute(REQUEST_ID, true);
 
@@ -148,6 +176,66 @@ contract CustosEscrowTest is Test {
 
         vm.expectRevert(CustosEscrow.Unauthorized.selector);
         escrow.resolveDispute(REQUEST_ID, true);
+    }
+
+    function testUnknownRequestReverts() external {
+        bytes32 unknownRequestId = keccak256("unknown");
+
+        vm.expectRevert(CustosEscrow.RequestNotFound.selector);
+        escrow.confirmDelivery(unknownRequestId);
+
+        vm.expectRevert(CustosEscrow.RequestNotFound.selector);
+        escrow.refund(unknownRequestId);
+
+        vm.expectRevert(CustosEscrow.RequestNotFound.selector);
+        escrow.dispute(unknownRequestId);
+
+        vm.prank(arbiter);
+        vm.expectRevert(CustosEscrow.RequestNotFound.selector);
+        escrow.resolveDispute(unknownRequestId, true);
+    }
+
+    function testTerminalStatesCannotBeChanged() external {
+        _deposit();
+
+        vm.prank(buyer);
+        escrow.confirmDelivery(REQUEST_ID);
+
+        vm.expectRevert(CustosEscrow.InvalidStatus.selector);
+        escrow.refund(REQUEST_ID);
+
+        vm.expectRevert(CustosEscrow.InvalidStatus.selector);
+        escrow.dispute(REQUEST_ID);
+
+        vm.prank(arbiter);
+        vm.expectRevert(CustosEscrow.InvalidStatus.selector);
+        escrow.resolveDispute(REQUEST_ID, false);
+    }
+
+    function testInvalidConstructorArgumentsRevert() external {
+        vm.expectRevert(CustosEscrow.ZeroAddress.selector);
+        new CustosEscrow(IERC20(address(0)), arbiter, TIMEOUT);
+
+        vm.expectRevert(CustosEscrow.ZeroAddress.selector);
+        new CustosEscrow(IERC20(address(token)), address(0), TIMEOUT);
+
+        vm.expectRevert(CustosEscrow.ZeroAmount.selector);
+        new CustosEscrow(IERC20(address(token)), arbiter, 0);
+    }
+
+    function testInvalidDepositArgumentsRevert() external {
+        vm.startPrank(buyer);
+
+        vm.expectRevert(CustosEscrow.ZeroAddress.selector);
+        escrow.deposit(address(0), seller, REQUEST_ID, AMOUNT);
+
+        vm.expectRevert(CustosEscrow.ZeroAddress.selector);
+        escrow.deposit(buyer, address(0), REQUEST_ID, AMOUNT);
+
+        vm.expectRevert(CustosEscrow.ZeroAmount.selector);
+        escrow.deposit(buyer, seller, REQUEST_ID, 0);
+
+        vm.stopPrank();
     }
 
     function _deposit() internal {
