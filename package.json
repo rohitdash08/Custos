@@ -11,6 +11,8 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "dev": "pnpm --parallel --filter @custos/facilitator --filter @custos/dashboard dev"
+    "dev": "pnpm --parallel --filter @custos/facilitator --filter @custos/dashboard dev",
+    "chain": "anvil --host 127.0.0.1 --port 8545",
+    "install:all": "pnpm install"
   }
 }

@@ -3,6 +3,17 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "dependencies": {
+    "express": "^4.21.2",
+    "x402-fetch": "^0.4.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.8"
+  },
   "scripts": {
     "dev:good": "tsx src/good-seller.ts",
     "dev:flaky": "tsx src/flaky-seller.ts",

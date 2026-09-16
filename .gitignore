@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.next/
+out/
+coverage/
+contracts/cache/
+contracts/out/
+contracts/broadcast/
+contracts/lib/
+.env
+.env.*
+!.env.example
