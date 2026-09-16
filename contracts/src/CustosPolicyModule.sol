@@ -63,15 +63,10 @@ contract CustosPolicyModule {
     event ScorePolicyUpdated(address indexed account, uint256 scoreThresholdAmount, uint256 minCustosScore);
     event PayeeApprovalUpdated(address indexed account, address indexed payee, bool approved);
     event PaymentApproved(address indexed account, address indexed payee, uint256 amount, uint256 spentToday);
-    event PaymentRejected(
-        address indexed account,
-        address indexed payee,
-        uint256 amount,
-        RejectionReason reason
-    );
+    event PaymentRejected(address indexed account, address indexed payee, uint256 amount, RejectionReason reason);
 
     constructor(address scoreOracle_, address entryPoint_) {
-        if (scoreOracle_ == address(0)) revert ZeroAddress();
+        if (scoreOracle_ == address(0) || entryPoint_ == address(0)) revert ZeroAddress();
         scoreOracle = scoreOracle_;
         entryPoint = entryPoint_;
     }
@@ -137,24 +132,21 @@ contract CustosPolicyModule {
     /// @return approved Whether the payment can be approved.
     /// @return reason The first policy rule that rejects it, if any.
     /// @return dailyRemaining Remaining daily budget at the time of the call.
-    function checkPayment(
-        address account,
-        address payee,
-        uint256 amount,
-        ScoreAttestation calldata attestation
-    ) external view returns (bool approved, RejectionReason reason, uint256 dailyRemaining) {
+    function checkPayment(address account, address payee, uint256 amount, ScoreAttestation calldata attestation)
+        external
+        view
+        returns (bool approved, RejectionReason reason, uint256 dailyRemaining)
+    {
         return _checkPayment(account, payee, amount, attestation);
     }
 
     /// @notice Consumes quota and records an approved payment attempt.
     /// @dev The account or configured EntryPoint must call this hook. Rejected
     ///      attempts return false instead of reverting so their event survives.
-    function validatePayment(
-        address account,
-        address payee,
-        uint256 amount,
-        ScoreAttestation memory attestation
-    ) public returns (bool approved) {
+    function validatePayment(address account, address payee, uint256 amount, ScoreAttestation memory attestation)
+        public
+        returns (bool approved)
+    {
         if (msg.sender != account && msg.sender != entryPoint) {
             emit PaymentRejected(account, payee, amount, RejectionReason.UnauthorizedCaller);
             return false;
@@ -178,22 +170,19 @@ contract CustosPolicyModule {
     /// @notice ERC-4337 adapter-shaped validation hook.
     /// @dev A smart-account adapter can map this result to validationData. A
     ///      zero result means valid; one means SIG_VALIDATION_FAILED.
-    function validateUserOp(
-        address account,
-        address payee,
-        uint256 amount,
-        bytes calldata encodedAttestation
-    ) external returns (uint256 validationData) {
+    function validateUserOp(address account, address payee, uint256 amount, bytes calldata encodedAttestation)
+        external
+        returns (uint256 validationData)
+    {
         ScoreAttestation memory attestation = abi.decode(encodedAttestation, (ScoreAttestation));
         return validatePayment(account, payee, amount, attestation) ? 0 : SIG_VALIDATION_FAILED;
     }
 
-    function _checkPayment(
-        address account,
-        address payee,
-        uint256 amount,
-        ScoreAttestation memory attestation
-    ) internal view returns (bool approved, RejectionReason reason, uint256 dailyRemaining) {
+    function _checkPayment(address account, address payee, uint256 amount, ScoreAttestation memory attestation)
+        internal
+        view
+        returns (bool approved, RejectionReason reason, uint256 dailyRemaining)
+    {
         Policy storage policy = policies[account];
         if (!policy.initialized) return (false, RejectionReason.PolicyNotInitialized, 0);
         if (!approvedPayees[account][payee]) return (false, RejectionReason.PayeeNotAllowed, _dailyRemaining(policy));
@@ -219,7 +208,9 @@ contract CustosPolicyModule {
         if (attestation.signature.length != 65 || attestation.deadline < block.timestamp) return false;
         if (usedScoreAttestations[account][attestation.nonce]) return false;
         bytes32 structHash = keccak256(
-            abi.encode(address(this), account, attestation.seller, attestation.score, attestation.deadline, attestation.nonce)
+            abi.encode(
+                address(this), account, attestation.seller, attestation.score, attestation.deadline, attestation.nonce
+            )
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", structHash));
         (uint8 v, bytes32 r, bytes32 s) = _splitSignature(attestation.signature);
